@@ -3,18 +3,79 @@
 #include "TCPSocket.h"
 #include "SpwfInterface.h"
 
-//------------------------------------
-// Hyperterminal configuration
-// 9600 bauds, 8-bit data, no parity
-//------------------------------------
+/* @brief Maximum size of the buffer used for obtaining SIM808 response to the
+ * commands.
+ */
+#define BUFFER_SIZE 255
+
+// Init serial with PC
 Serial pc(USBTX, USBRX);
+// Init serial with SIM808_V2, Serial3 for STM32 Nucleo L476G
+Serial module(A0, A1);
+
+// Informing LED
 DigitalOut green(LED1);
+// Enable button
 DigitalIn mybutton(USER_BUTTON);
 
+// Interface to the WiFi module
 SpwfSAInterface spwf(D8, D2, false);
 
-char buf[255] = {'\0'};
+// Global response buffer
+int buf_ind = 0;
+char buffer[BUFFER_SIZE];
 
+/* @brief Interrupt handler stores bytes received from SIM808 module into global
+ * buffer.
+ */
+void SIM808_V2_IRQHandler(void)                    
+{    
+    char ch = module.getc();
+
+    buffer[buf_ind] = ch;
+    buf_ind++; 
+} 
+
+/* @brief Write command `cmd` to the serial port `sr` and add newline '\n'.
+ *
+ * @param cmd Command to send.
+ * @param sr mbed Serial object connected to SIM808_V2 module.
+ */
+void sim808v2_send_cmd(const char * cmd, Serial * sr)
+{
+    sr -> puts(cmd);
+    sr -> puts("\n");
+}
+
+/* @brief Clear global buffer.
+ *
+ * Clear global buffer by filling it with zeros and returning buffer index to
+ * the starting position.
+ */
+void clear_buffer(void)
+{
+    uint16_t i;
+    for(i = 0; i < BUFFER_SIZE; i++)
+    {
+        buffer[i] = 0x00;
+    }
+    buf_ind = 0;
+}
+
+/* @brief Prints buffer content. Used for printing SIM808_V2's response to
+ * commands.
+ *
+ */
+void print_buffer(void)
+{
+    pc.printf("Response: %s\r\n", buffer);
+    clear_buffer(); 
+}
+
+/* @brief Make `num` of blinks by LED `green`.
+ *
+ * @param num Number of blinks
+ */
 void n_blinks(int num){
     for (int i = 0; i < num; i++) {
         green = 1;
@@ -59,11 +120,51 @@ int send_string(char * str, size_t size, TCPSocket * socket){
     return num;
 }
 
+/* @brief Check if command passed and returned "OK".
+ *
+ * @return Boolean, True if identical.
+ */
+int sim808v2_cmd_pass(void)
+{
+    wait(1);
+    int status = strcmp(buffer, "OK");
+
+    return status == 0;
+}
+
+/* @brief Prepare serial link and SIM808 V2 module for work (mainly for GPS
+ * data).
+ *
+ * @return Boolean in case of succesful intialization.
+ */
+int sim808v2_setup(void)
+{
+    int status = 1;
+    // Configure connection to the SIM808 module
+    module.baud(4800);
+    module.attach(&SIM808_V2_IRQHandler, SerialBase::RxIrq);
+
+    // Check status
+    sim808v2_send_cmd("AT", &module);
+    status = sim808v2_cmd_pass();
+
+    // Power on GPS module
+    sim808v2_send_cmd("AT+CGNSPWR=1", &module);
+    status = sim808v2_cmd_pass();
+
+    // Set NMEA format
+    sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
+    status = sim808v2_cmd_pass();
+
+    return status;
+}
+
 int main() {
     int err, num;    
     green = 0;
     char * ssid = "Install Windows 10";
     char * seckey = "11235813";  
+    char msg[BUFFER_SIZE] = {'\0'};
     TCPSocket socket(&spwf);
 
     err = setup_connection(&socket, ssid, seckey);
@@ -74,6 +175,12 @@ int main() {
         return -1;
     } else {
         pc.printf("Connected to host server\r\n"); 
+
+        // Initialize GPS module
+        if(sim808v2_setup() != 1){
+            pc.printf("Failed to initialize SIM808 module\r\n"); 
+            return -1;
+        }
 
         // Start session
         num = send_string("@42;I;Ver:1a#", 13, &socket);
@@ -86,7 +193,11 @@ int main() {
                 num = send_string("@42;T;Button is pressed#", 24, &socket);
             }
             else{
-                num = send_string("@42;D;25.03.17;16:36:27.9;4954.70068N;1447.00391E;0.0;204.4;551.45;19;11;34.0;Vodafone CZ;4G;3332.72876;3744.53149;8571.24219#", 126, &socket);
+                sim808v2_send_cmd("AT+CGNSINF", &module);
+                strcpy(msg, "@42;T;");
+                strncpy(msg, buffer, 60);
+                strcpy(msg, "#");
+                num = send_string(msg, 67, &socket);
             }
             pc.printf("Sent %d bytes. Button status: %d.\r\n", num, mybutton);
             wait(0.1);
