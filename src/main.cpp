@@ -105,8 +105,8 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     
     pc.printf("\r\nconnecting to http://147.32.196.177:5000/\r\n");
     
-    // err = socket.connect("192.168.12.1", 5000);
-    err = socket -> connect("147.32.196.177", 5000);
+    err = socket -> connect("192.168.12.1", 5000);
+    // err = socket -> connect("147.32.196.177", 5000);
 
     return err;
 }
@@ -126,8 +126,11 @@ int send_string(char * str, size_t size, TCPSocket * socket){
  */
 int sim808v2_cmd_pass(void)
 {
+    char * token;
     wait(1);
-    int status = strcmp(buffer, "OK");
+    token = strtok(buffer, "\n");
+    token = strtok(NULL, "\n");
+    int status = strncmp(token, "OK", 2);
 
     return status == 0;
 }
@@ -147,14 +150,17 @@ int sim808v2_setup(void)
     // Check status
     sim808v2_send_cmd("AT", &module);
     status = sim808v2_cmd_pass();
+    clear_buffer();
 
     // Power on GPS module
     sim808v2_send_cmd("AT+CGNSPWR=1", &module);
     status = sim808v2_cmd_pass();
+    clear_buffer();
 
     // Set NMEA format
     sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
     status = sim808v2_cmd_pass();
+    clear_buffer();
 
     return status;
 }
@@ -162,10 +168,18 @@ int sim808v2_setup(void)
 int main() {
     int err, num;    
     green = 0;
+    char * token;
     char * ssid = "Install Windows 10";
     char * seckey = "11235813";  
     char msg[BUFFER_SIZE] = {'\0'};
     TCPSocket socket(&spwf);
+
+    // Initialize GPS module. Note: Don't know why, but SIM808 initialization
+    // should be before connection to socket.
+    if(sim808v2_setup() != 1){
+        pc.printf("Failed to initialize SIM808 module\r\n"); 
+        return -1;
+    }
 
     err = setup_connection(&socket, ssid, seckey);
     
@@ -176,14 +190,9 @@ int main() {
     } else {
         pc.printf("Connected to host server\r\n"); 
 
-        // Initialize GPS module
-        if(sim808v2_setup() != 1){
-            pc.printf("Failed to initialize SIM808 module\r\n"); 
-            return -1;
-        }
-
         // Start session
         num = send_string("@42;I;Ver:1a#", 13, &socket);
+        pc.printf("Sent %d bytes. Button status: %d.\r\n", num, mybutton);
 
         while(1) { 
             if (mybutton == 0){
@@ -194,10 +203,14 @@ int main() {
             }
             else{
                 sim808v2_send_cmd("AT+CGNSINF", &module);
+                wait(1);
                 strcpy(msg, "@42;T;");
-                strncpy(msg, buffer, 60);
-                strcpy(msg, "#");
+                token = strtok(buffer, "\n");
+                token = strtok(NULL, "\n");
+                strncat(msg, token, 60);
+                strcat(msg, "#");
                 num = send_string(msg, 67, &socket);
+                clear_buffer();
             }
             pc.printf("Sent %d bytes. Button status: %d.\r\n", num, mybutton);
             wait(0.1);
