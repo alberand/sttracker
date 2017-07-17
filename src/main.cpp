@@ -144,7 +144,7 @@ int sim808v2_setup(void)
 {
     int status = 1;
     // Configure connection to the SIM808 module
-    module.baud(4800);
+    module.baud(9600);
     module.attach(&SIM808_V2_IRQHandler, SerialBase::RxIrq);
 
     // Check status
@@ -172,6 +172,7 @@ int main() {
     char * ssid = "Install Windows 10";
     char * seckey = "11235813";  
     char msg[BUFFER_SIZE] = {'\0'};
+    pc.baud(115200);
     TCPSocket socket(&spwf);
 
     // Initialize GPS module. Note: Don't know why, but SIM808 initialization
@@ -192,7 +193,9 @@ int main() {
 
         // Start session
         num = send_string("@42;I;Ver:1a#", 13, &socket);
-        pc.printf("Sent %d bytes. Button status: %d.\r\n", num, mybutton);
+        pc.printf("Sent %d bytes. \r\n", num);
+
+        print_buffer();
 
         while(1) { 
             if (mybutton == 0){
@@ -212,7 +215,7 @@ int main() {
                 num = send_string(msg, 67, &socket);
                 clear_buffer();
             }
-            pc.printf("Sent %d bytes. Button status: %d.\r\n", num, mybutton);
+            pc.printf("Sent %d bytes. \r\n", num);
             wait(0.1);
         }
     }
