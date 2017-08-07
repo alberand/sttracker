@@ -3,6 +3,17 @@
 #include "TCPSocket.h"
 #include "SpwfInterface.h"
 
+
+//#define DEBUG 0
+
+// "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
+// 1,1,20170717100030.000,50.080988,14.388322,82.200,
+
+#ifdef DEBUG
+    #define DEBUG(x) pc.printf x
+#else
+    #define DEBUG(x) do {} while (0)
+#endif
 /* @brief Maximum size of the buffer used for obtaining SIM808 response to the
  * commands.
  */
@@ -193,7 +204,7 @@ int main() {
 
         // Start session
         num = send_string("@42;I;Ver:1a#", 13, &socket);
-        pc.printf("Sent %d bytes. \r\n", num);
+        DEBUG(("Sent %d bytes. \r\n", num));
 
         print_buffer();
 
@@ -215,7 +226,7 @@ int main() {
                 num = send_string(msg, 67, &socket);
                 clear_buffer();
             }
-            pc.printf("Sent %d bytes. \r\n", num);
+            DEBUG(("Sent %d bytes. \r\n", num));
             wait(0.1);
         }
     }
