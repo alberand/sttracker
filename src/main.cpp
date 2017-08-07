@@ -63,7 +63,7 @@ void sim808v2_send_cmd(const char * cmd, Serial * sr)
  * Clear global buffer by filling it with zeros and returning buffer index to
  * the starting position.
  */
-void clear_buffer(void)
+void sim808v2_clear_buffer(void)
 {
     uint16_t i;
     for(i = 0; i < BUFFER_SIZE; i++)
@@ -77,10 +77,10 @@ void clear_buffer(void)
  * commands.
  *
  */
-void print_buffer(void)
+void sim808v2_print_buffer(void)
 {
     pc.printf("Response: %s\r\n", buffer);
-    clear_buffer(); 
+    sim808v2_clear_buffer(); 
 }
 
 /* @brief Make `num` of blinks by LED `green`.
@@ -161,17 +161,17 @@ int sim808v2_setup(void)
     // Check status
     sim808v2_send_cmd("AT", &module);
     status = sim808v2_cmd_pass();
-    clear_buffer();
+    sim808v2_clear_buffer();
 
     // Power on GPS module
     sim808v2_send_cmd("AT+CGNSPWR=1", &module);
     status = sim808v2_cmd_pass();
-    clear_buffer();
+    sim808v2_clear_buffer();
 
     // Set NMEA format
     sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
     status = sim808v2_cmd_pass();
-    clear_buffer();
+    sim808v2_clear_buffer();
 
     return status;
 }
@@ -206,7 +206,7 @@ int main() {
         num = send_string("@42;I;Ver:1a#", 13, &socket);
         DEBUG(("Sent %d bytes. \r\n", num));
 
-        print_buffer();
+        sim808v2_print_buffer();
 
         while(1) { 
             if (mybutton == 0){
