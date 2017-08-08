@@ -65,6 +65,9 @@ void sim808v2_send_cmd(const char * cmd, BufferedSerial * sr)
 
 int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     int err;
+    // char * host_ip = "192.168.12.1";
+    char * host_ip = "147.32.196.177";
+    int host_port = 5000;
 
     pc.printf("Connecting to AP\r\n");
             
@@ -81,10 +84,9 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     pc.printf("\r\nIP Address is: %s\r\n", (ip) ? ip : "No IP");
     pc.printf("MAC Address is: %s\r\n", (mac) ? mac : "No MAC");    
     
-    pc.printf("\r\nconnecting to http://147.32.196.177:5000/\r\n");
+    pc.printf("\r\nconnecting to http://%s:%d/\r\n", host_ip, host_port);
     
-    err = socket -> connect("192.168.12.1", 5000);
-    // err = socket -> connect("147.32.196.177", 5000);
+    err = socket -> connect(host_ip, host_port);
 
     return err;
 }
