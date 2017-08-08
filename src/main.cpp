@@ -3,6 +3,7 @@
 #include "TCPSocket.h"
 #include "SpwfInterface.h"
 
+#include "utils.h"
 
 //#define DEBUG 0
 
