@@ -196,6 +196,7 @@ int main() {
     int err, num;    
     green = 0;
     char * token;
+    // AP credential
     char * ssid = "Install Windows 10";
     char * seckey = "11235813";  
     // Structure to fill in with GPS data
@@ -206,15 +207,19 @@ int main() {
     char ch;
 
     ATParser at = ATParser(module, "\r\n");
+
+    // Set up Serial link with PC
     pc.baud(115200);
+    // Create TCP socket to connect to the server
     TCPSocket socket(&spwf);
 
-    // Initialize GPS module. Note: Don't know why, but SIM808 initialization
-    // should be before connection to socket.
-    if(sim808v2_setup() != 1){
-        pc.printf("Failed to initialize SIM808 module\r\n"); 
-        return -1;
-    }
+    pc.printf("Start GSM setup\r\n"); 
+
+    // int status = setupGSM();
+
+    // pc.printf("GSM status: %s\r\n", status); 
+
+    // return 0;
 
     if(WIFION){
         err = setup_connection(&socket, ssid, seckey);
@@ -229,9 +234,12 @@ int main() {
     } else {
         pc.printf("Connected to host server\r\n"); 
 
-        // Start session
-        num = send_string("@42;I;Ver:1a#", 13, &socket);
-        DEBUG(("Sent %d bytes. \r\n", num));
+        // Initialize GPS module. Note: Don't know why, but SIM808 initialization
+        // should be before connection to socket.
+        if(sim808v2_setup(&at) != 1){
+            pc.printf("Failed to initialize SIM808 module\r\n"); 
+            return -1;
+        }
 
         // Start session
         if(WIFION){
@@ -249,9 +257,16 @@ int main() {
                 }
             }
             else{
-                sim808v2_send_cmd("AT+CGNSINF", &module);
-                wait(1);
-                strcpy(msg, "@42;T;");
+                // sim808v2_send_cmd("AT+CGNSINF", &module);
+                // sim808v2_send_cmd("AT+CGNSINF=32", &module);
+                // sim808v2_send_cmd("AT+CGNSTST?", &module);
+                // sim808v2_send_cmd("AT+CSQ", &module);
+                // isSIMready();
+                // SIMsetup();
+                // at.read(msg, 100);
+                // pc.printf("%s", &msg);
+                //print_buffer(&sim808_buffer, &pc);
+
                 ch = at.getc();
                 if (ch == '$'){
                     rmc[0] = ch;
@@ -272,15 +287,22 @@ int main() {
                         }
                     }
                 }
+
+
+                // wait(1);
+                // wait(0.1);
+
+                // makeCall();
+                /* strcpy(msg, "@42;T;");
                 token = strtok(buffer, "\n");
                 token = strtok(NULL, "\n");
-                strncat(msg, token, 60);
+                strncat(msg, token, 255);
                 strcat(msg, "#");
-                num = send_string(msg, 67, &socket);
-                clear_buffer();
+                num = send_string(msg, 67, &socket);*/
+                // sim808v2_clear_buffer();
             }
-            DEBUG(("Sent %d bytes. \r\n", num));
-            wait(0.1);
+            // DEBUG(("Sent %d bytes. \r\n", num));
+            // wait(0.1);
         }
     }
     
