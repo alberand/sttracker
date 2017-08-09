@@ -100,7 +100,31 @@ int send_string(char * str, size_t size, TCPSocket * socket){
     return num;
 }
 
-/* @brief Check if command passed and returned "OK".
+/* @brief Take a string and parse it into struct 
+ *
+ * Take string in GPS fromat RMC and parse it into struct using Minmea library.
+ *
+ * @param string to parse
+ * @param struct to fill in
+ */
+void parse_RMC( const char * msg, struct minmea_sentence_rmc frame )
+{
+    //struct minmea_sentence_rmc frame;
+    if (minmea_parse_rmc(&frame, msg)) {
+        pc.printf("$RMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\r\n",
+                frame.latitude.value, frame.latitude.scale,
+                frame.longitude.value, frame.longitude.scale,
+                frame.speed.value, frame.speed.scale);
+        pc.printf("$RMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\r\n",
+                minmea_rescale(&frame.latitude, 1000),
+                minmea_rescale(&frame.longitude, 1000),
+                minmea_rescale(&frame.speed, 1000));
+        pc.printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\r\n",
+                minmea_tocoord(&frame.latitude),
+                minmea_tocoord(&frame.longitude),
+                minmea_tofloat(&frame.speed));
+    }
+}
  *
  * @return Boolean, True if identical.
  */
@@ -151,6 +175,8 @@ int main() {
     char * token;
     char * ssid = "Install Windows 10";
     char * seckey = "11235813";  
+    // Structure to fill in with GPS data
+    struct minmea_sentence_rmc frame;
     char msg[BUFFER_SIZE] = {'\0'};
     pc.baud(115200);
     TCPSocket socket(&spwf);
