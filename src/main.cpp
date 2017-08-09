@@ -21,6 +21,7 @@
 #else
     #define DEBUG(x) do {} while (0)
 #endif
+
 /* @brief Maximum size of the buffer used for obtaining SIM808 response to the
  * commands.
  */
@@ -125,16 +126,29 @@ void parse_RMC( const char * msg, struct minmea_sentence_rmc frame )
                 minmea_tofloat(&frame.speed));
     }
 }
+
+/* @brief Check if command passed and returned "OK". Firstly, wait for 1 second
+ * and then look for OK in the response buffer. Also, clears buffer.
  *
  * @return Boolean, True if identical.
  */
 int sim808v2_cmd_pass(void)
 {
-    char * token;
+    int status;
+    int pos = 0;
+    char response[2];
+
+    // Wait 
     wait(1);
-    token = strtok(buffer, "\n");
-    token = strtok(NULL, "\n");
-    int status = strncmp(token, "OK", 2);
+
+    while(sim808_buffer.available())
+    {
+        response[0] = sim808_buffer.get();
+        response[1] = sim808_buffer.get();
+        if(!(status = strncmp(response, "OK", 2))){
+            break;
+        }
+    }
 
     return status == 0;
 }
@@ -144,27 +158,36 @@ int sim808v2_cmd_pass(void)
  *
  * @return Boolean in case of succesful intialization.
  */
-int sim808v2_setup(void)
+int sim808v2_setup(ATParser * at)
 {
     int status = 1;
     // Configure connection to the SIM808 module
-    module.baud(9600);
-    module.attach(&SIM808_V2_IRQHandler, SerialBase::RxIrq);
+    // module.baud(9600);
+    // module.attach(&SIM808_V2_IRQHandler, SerialBase::RxIrq);
 
     // Check status
-    sim808v2_send_cmd("AT", &module);
-    status = sim808v2_cmd_pass();
-    sim808v2_clear_buffer();
+    status = at -> send("AT") && at -> recv("OK");
+    // sim808v2_send_cmd("AT", &module);
+    // status = sim808v2_cmd_pass();
+    // sim808_buffer.clear();
 
     // Power on GPS module
-    sim808v2_send_cmd("AT+CGNSPWR=1", &module);
-    status = sim808v2_cmd_pass();
-    sim808v2_clear_buffer();
+    status = at -> send("AT+CGNSPWR=1") && at -> recv("OK");
+    // sim808v2_send_cmd("AT+CGNSPWR=1", &module);
+    // status = sim808v2_cmd_pass();
+    // sim808_buffer.clear();
 
     // Set NMEA format
-    sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
-    status = sim808v2_cmd_pass();
-    sim808v2_clear_buffer();
+    status = at -> send("AT+CGNSSEQ=RMC") && at -> recv("OK");
+    // sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
+    // status = sim808v2_cmd_pass();
+    // sim808_buffer.clear();
+
+    // Turn on reporting
+    status = at -> send("AT+CGNSTST=1") && at -> recv("OK");
+    // sim808v2_send_cmd("AT+CGNSTST=0", &module);
+    // status = sim808v2_cmd_pass();
+    // sim808_buffer.clear();
 
     return status;
 }
@@ -177,7 +200,12 @@ int main() {
     char * seckey = "11235813";  
     // Structure to fill in with GPS data
     struct minmea_sentence_rmc frame;
+    // Buffer for adding protocol structural symbols
     char msg[BUFFER_SIZE] = {'\0'};
+    char rmc[BUFFER_SIZE] = { '\0' };
+    char ch;
+
+    ATParser at = ATParser(module, "\r\n");
     pc.baud(115200);
     TCPSocket socket(&spwf);
 
@@ -224,6 +252,26 @@ int main() {
                 sim808v2_send_cmd("AT+CGNSINF", &module);
                 wait(1);
                 strcpy(msg, "@42;T;");
+                ch = at.getc();
+                if (ch == '$'){
+                    rmc[0] = ch;
+                    at.read((rmc + 1), 5);
+
+                    if(strcmp((rmc + 1), "GPRMC") == 0){
+                        ch = at.getc();
+                        while(ch != '\n'){
+                            append(rmc, ch);
+                            ch = at.getc();
+                        }
+                        pc.printf("%s\r\n", rmc);
+                        parse_RMC(rmc, frame);
+                        pc.printf("\r\n");
+                        for(int erase = 0; erase < BUFFER_SIZE;erase++)
+                        {
+                              rmc[erase] = '\0';
+                        }
+                    }
+                }
                 token = strtok(buffer, "\n");
                 token = strtok(NULL, "\n");
                 strncat(msg, token, 60);
