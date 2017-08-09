@@ -16,14 +16,11 @@ used Serial3 which corresponds to pins A0 and A1 on the STM board. So, to make
 it work you need to connect Adafruit module pins in a following way 2 -> A0, 
 3 -> A1.
 
-Also, you need to use addition battery to power up Adafruit module. It's not
+Moreover, you need to use addition battery to power up Adafruit module. It's not
 enough to power it from the USB cable throught the STM board. 
-[Why?](https://learn.adafruit.com/adafruit-fona-808-cellular-plus-gps-shield-for-arduino/faqs#faq-1).
+[Why?](https://learn.adafruit.com/adafruit-fona-808-cellular-plus-gps-shield-for-arduino/faqs#faq-1)
 
 # Requirements
-
-Software:
-* platformio
 
 Used hardware:
 * [STM32 Nucleo L476RG](http://www.st.com/en/evaluation-tools/nucleo-l476rg.html)
@@ -35,4 +32,4 @@ Used hardware:
 
 1. Run TCP server
 2. Configure program with correct parameters for WiFi AP and TCP socket
-3. Compile and upload project `pio run -t upload -e nucleo`
+3. Compile and upload project
