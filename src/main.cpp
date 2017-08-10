@@ -213,7 +213,11 @@ int main() {
     // Create TCP socket to connect to the server
     TCPSocket socket(&spwf);
 
-    pc.printf("Start GSM setup\r\n"); 
+    if(!WIFION){
+        pc.printf("WiFi is disabled\r\n"); 
+    }
+
+    // pc.printf("Start GSM setup\r\n"); 
 
     // int status = setupGSM();
 
@@ -232,10 +236,11 @@ int main() {
         pc.printf("Could not connect to Socket, err = %d!!\r\n", err); 
         return -1;
     } else {
-        pc.printf("Connected to host server\r\n"); 
+        if(WIFION){
+            pc.printf("Connected to host server\r\n"); 
+        }
 
-        // Initialize GPS module. Note: Don't know why, but SIM808 initialization
-        // should be before connection to socket.
+        // Initialize GPS module
         if(sim808v2_setup(&at) != 1){
             pc.printf("Failed to initialize SIM808 module\r\n"); 
             return -1;
@@ -267,6 +272,7 @@ int main() {
                 // pc.printf("%s", &msg);
                 //print_buffer(&sim808_buffer, &pc);
 
+                // Wait for data occure in the buffer and read them
                 ch = at.getc();
                 if (ch == '$'){
                     rmc[0] = ch;
@@ -278,7 +284,10 @@ int main() {
                             append(rmc, ch);
                             ch = at.getc();
                         }
+                        // Print original msg obtained from SIM808
                         pc.printf("%s\r\n", rmc);
+                        // Just print some parsed data
+                        // This function fill up frame struct with data
                         parse_RMC(rmc, frame);
                         pc.printf("\r\n");
                         for(int erase = 0; erase < BUFFER_SIZE;erase++)
@@ -306,6 +315,7 @@ int main() {
         }
     }
     
+    // For now unreachable
     if(WIFION){
         pc.printf("Closing Socket\r\n");
         socket.close();
