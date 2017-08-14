@@ -10,12 +10,14 @@
 #include "utils.h"
 #include "minmea.h"
 
-
-// "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
-// 1,1,20170717100030.000,50.080988,14.388322,82.200,
+/* TODO:
+ * setup_connection - need to throuw host and port as arguments
+ *
+ */
 
 #define WIFION 0
 //#define DEBUG 0
+
 #ifdef DEBUG
     #define DEBUG(x) pc.printf x
 #else
@@ -40,7 +42,7 @@ DigitalIn mybutton(USER_BUTTON);
 // Interface to the WiFi module
 SpwfSAInterface spwf(D8, D2, false);
 
-// Global response buffer
+// Global response buffer use for responses from SIM808
 MyBuffer <char> sim808_buffer;
 
 /* @brief Interrupt handler stores bytes received from SIM808 module into global
@@ -48,6 +50,7 @@ MyBuffer <char> sim808_buffer;
  */
 void SIM808_V2_IRQHandler(void)                    
 {    
+    // Currently unsued
     char ch = module.getc();
 
     sim808_buffer.put(ch);
@@ -92,6 +95,12 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     return err;
 }
 
+/* @brief Send string to the TCP socket
+ *
+ * @param str string to send
+ * @param size size of the string
+ * @param socket TCPSocket instance
+ */
 int send_string(char * str, size_t size, TCPSocket * socket){
     pc.printf("Send: %s\r\n", str); 
 
@@ -262,16 +271,6 @@ int main() {
                 }
             }
             else{
-                // sim808v2_send_cmd("AT+CGNSINF", &module);
-                // sim808v2_send_cmd("AT+CGNSINF=32", &module);
-                // sim808v2_send_cmd("AT+CGNSTST?", &module);
-                // sim808v2_send_cmd("AT+CSQ", &module);
-                // isSIMready();
-                // SIMsetup();
-                // at.read(msg, 100);
-                // pc.printf("%s", &msg);
-                //print_buffer(&sim808_buffer, &pc);
-
                 // Wait for data occure in the buffer and read them
                 ch = at.getc();
                 if (ch == '$'){
@@ -297,18 +296,12 @@ int main() {
                     }
                 }
 
-
-                // wait(1);
-                // wait(0.1);
-
-                // makeCall();
                 /* strcpy(msg, "@42;T;");
                 token = strtok(buffer, "\n");
                 token = strtok(NULL, "\n");
                 strncat(msg, token, 255);
                 strcat(msg, "#");
                 num = send_string(msg, 67, &socket);*/
-                // sim808v2_clear_buffer();
             }
             // DEBUG(("Sent %d bytes. \r\n", num));
             // wait(0.1);
