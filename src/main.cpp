@@ -247,19 +247,52 @@ bool read_msg_header(ATParser * at, char * nmeamsg, char * format){
         return 0;
     }
 }
+
+/* @brief
+ *
+ */
+void wait_for_sample(ATParser * at, char * nmeamsg, char * format, 
+        struct minmea_sentence_rmc * frame){
+    while(1){
+        char ch = wait_for_msg_start(at);
+        nmeamsg[0] = ch;
+        if(read_msg_header(at, nmeamsg, format)){
+            // Read msg until newline
+            ch = at -> getc();
+            while(ch != '\n'){
+                append(nmeamsg, ch);
+                ch = at -> getc();
+            }
+
+            // Print original msg obtained from SIM808
+            pc.printf("Receved from SIM808: %s\r\n", nmeamsg);
+            // Just print some parsed data
+            // This function fill up frame struct with data
+            parse_RMC(nmeamsg, frame);
+            pc.printf("\r\n");
+            for(int erase = 0; erase < BUFFER_SIZE;erase++)
+            {
+                  nmeamsg[erase] = '\0';
+            }
+            
+        }
+    }
+
+
+}
 int main() {
     int err, num;    
     green = 0;
-    char * token;
     // AP credential
     char ssid[] = "Install Windows 10";
     char seckey[] = "11235813";  
     // Structure to fill in with GPS data
     struct minmea_sentence_rmc frame;
     // Buffer for adding protocol structural symbols
-    char msg[BUFFER_SIZE] = {'\0'};
-    char rmc[BUFFER_SIZE] = { '\0' };
-    char ch;
+
+    char format[7] = "GPRMC\0";
+    char nmeamsg[BUFFER_SIZE] = { '\0' };
+
 
     ATParser at = ATParser(module, "\r\n");
 
@@ -318,29 +351,7 @@ int main() {
             }
             else{
                 // Wait for data occure in the buffer and read them
-                ch = at.getc();
-                if (ch == '$'){
-                    rmc[0] = ch;
-                    at.read((rmc + 1), 5);
-
-                    if(strcmp((rmc + 1), "GPRMC") == 0){
-                        ch = at.getc();
-                        while(ch != '\n'){
-                            append(rmc, ch);
-                            ch = at.getc();
-                        }
-                        // Print original msg obtained from SIM808
-                        pc.printf("Receved from SIM808: %s\r\n", rmc);
-                        // Just print some parsed data
-                        // This function fill up frame struct with data
-                        parse_RMC(rmc, frame);
-                        pc.printf("\r\n");
-                        for(int erase = 0; erase < BUFFER_SIZE;erase++)
-                        {
-                              rmc[erase] = '\0';
-                        }
-                    }
-                }
+                wait_for_sample(&at, nmeamsg, format, &frame);
 
                 /* strcpy(msg, "@42;T;");
                 token = strtok(buffer, "\n");
