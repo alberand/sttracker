@@ -71,8 +71,8 @@ void sim808v2_send_cmd(const char * cmd, BufferedSerial * sr)
 
 int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     int err;
-    // char * host_ip = "192.168.12.1";
-    char * host_ip = "147.32.196.177";
+    // char host_ip[] = "192.168.12.1";
+    char host_ip[] = "147.32.196.177";
     int host_port = 5000;
 
     DEBUGP(("Connecting to AP\r\n"));
@@ -119,23 +119,23 @@ int send_string(char * str, size_t size, TCPSocket * socket){
  * @param string to parse
  * @param struct to fill in
  */
-void parse_RMC( const char * msg, struct minmea_sentence_rmc frame )
+void parse_RMC( const char * msg, struct minmea_sentence_rmc * frame )
 {
     //struct minmea_sentence_rmc frame;
-    if (minmea_parse_rmc(&frame, msg)) {
+    if (minmea_parse_rmc(frame, msg)) {
 #if DEBUG
    pc.printf("$RMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\r\n",
-           frame.latitude.value, frame.latitude.scale,
-           frame.longitude.value, frame.longitude.scale,
-           frame.speed.value, frame.speed.scale);
+           frame -> latitude.value, frame -> latitude.scale,
+           frame -> longitude.value, frame -> longitude.scale,
+           frame -> speed.value, frame -> speed.scale);
    pc.printf("$RMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\r\n",
-           minmea_rescale(&frame.latitude, 1000),
-           minmea_rescale(&frame.longitude, 1000),
-           minmea_rescale(&frame.speed, 1000));
+           minmea_rescale(&frame -> latitude, 1000),
+           minmea_rescale(&frame -> longitude, 1000),
+           minmea_rescale(&frame -> speed, 1000));
    pc.printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\r\n",
-           minmea_tocoord(&frame.latitude),
-           minmea_tocoord(&frame.longitude),
-           minmea_tofloat(&frame.speed));
+           minmea_tocoord(&frame -> latitude),
+           minmea_tocoord(&frame -> longitude),
+           minmea_tofloat(&frame -> speed));
 #else
    ;
 #endif
@@ -149,8 +149,7 @@ void parse_RMC( const char * msg, struct minmea_sentence_rmc frame )
  */
 int sim808v2_cmd_pass(void)
 {
-    int status;
-    int pos = 0;
+    int status = 1;
     char response[2];
 
     // Wait 
@@ -216,12 +215,14 @@ int sim808v2_setup(ATParser * at)
 char wait_for_msg_start(ATParser * at){
     char ch;
 
-    while(ch = at.getc()){
+    while((ch = at -> getc())){
         if(ch == '$'){
             return ch;
         }
-        DEBUGP(("Char from SIM808: %c\r\n", ch))
+        // DEBUGP(("Char from SIM808: %c\r\n", ch));
     }
+
+    return '\0';
 }
 
 /* @brief This function should be called after `wait_for_msg_start`. Read next 5
@@ -230,17 +231,18 @@ char wait_for_msg_start(ATParser * at){
  * header to the `buffer`.
  *
  * @param at ATParser instance associated with SIM808
- * @param buffer Buffer with NMEA message
+ * @param nmeamsg Buffer with NMEA message
+ * @param format Name of the format (for example, GPRMC)
  * @return True if header equal to format
  */
-bool read_msg_header(ATParser * at, char * buffer, char * format){
-    at.read((buffer + 1), 5);
+bool read_msg_header(ATParser * at, char * nmeamsg, char * format){
+    at -> read((nmeamsg + 1), 5);
 
-    if(strcmp((rmc + 1), format) == 0){
+    if(strcmp((nmeamsg + 1), format) == 0){
         return 1;
     } else{
         for(int i=0; i < 5; i++){
-            rmc[(rmc + 1 + i)] = '\0';
+            *(nmeamsg + 1 + i) = '\0';
         }
         return 0;
     }
@@ -250,8 +252,8 @@ int main() {
     green = 0;
     char * token;
     // AP credential
-    char * ssid = "Install Windows 10";
-    char * seckey = "11235813";  
+    char ssid[] = "Install Windows 10";
+    char seckey[] = "11235813";  
     // Structure to fill in with GPS data
     struct minmea_sentence_rmc frame;
     // Buffer for adding protocol structural symbols
