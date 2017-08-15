@@ -207,6 +207,44 @@ int sim808v2_setup(ATParser * at)
     return status;
 }
 
+/* @brief Wait for the NMEA messages starting character. In other words for `$`
+ * sign.
+ *
+ * @param at ATParser instance associated with SIM808
+ * @return Received character
+ */
+char wait_for_msg_start(ATParser * at){
+    char ch;
+
+    while(ch = at.getc()){
+        if(ch == '$'){
+            return ch;
+        }
+        DEBUGP(("Char from SIM808: %c\r\n", ch))
+    }
+}
+
+/* @brief This function should be called after `wait_for_msg_start`. Read next 5
+ * chars following `$` sign. They represents format of the NMEA message. If
+ * header is not equal to `format` then leave buffer empty. Otherwise, add
+ * header to the `buffer`.
+ *
+ * @param at ATParser instance associated with SIM808
+ * @param buffer Buffer with NMEA message
+ * @return True if header equal to format
+ */
+bool read_msg_header(ATParser * at, char * buffer, char * format){
+    at.read((buffer + 1), 5);
+
+    if(strcmp((rmc + 1), format) == 0){
+        return 1;
+    } else{
+        for(int i=0; i < 5; i++){
+            rmc[(rmc + 1 + i)] = '\0';
+        }
+        return 0;
+    }
+}
 int main() {
     int err, num;    
     green = 0;
