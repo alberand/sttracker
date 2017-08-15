@@ -9,6 +9,7 @@
 // Custom libs
 #include "utils.h"
 #include "minmea.h"
+#include "DFRobot_sim808.h"
 
 /* TODO:
  * setup_connection - need to throuw host and port as arguments
@@ -16,12 +17,13 @@
  */
 
 #define WIFION 0
-//#define DEBUG 0
+// To compile with DEBUG mode on add `-c -DDEBUG=0` to compiler
+#define DEBUG 1
 
-#ifdef DEBUG
-    #define DEBUG(x) pc.printf x
+#if DEBUG
+    #define DEBUGP(x) pc.printf x
 #else
-    #define DEBUG(x) do {} while (0)
+    #define DEBUGP(x) do {} while (0)
 #endif
 
 /* @brief Maximum size of the buffer used for obtaining SIM808 response to the
@@ -73,22 +75,22 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     char * host_ip = "147.32.196.177";
     int host_port = 5000;
 
-    pc.printf("Connecting to AP\r\n");
+    DEBUGP(("Connecting to AP\r\n"));
             
     if(spwf.connect(ssid, seckey, NSAPI_SECURITY_WPA2)) {      
-        pc.printf("Connected.\r\n");
+        DEBUGP(("Connected.\r\n"));
     } else {
-        pc.printf("Error connecting to AP.\r\n");
+        DEBUGP(("Error connecting to AP.\r\n"));
         return -1;
     }   
 
     const char *ip = spwf.get_ip_address();
     const char *mac = spwf.get_mac_address();
     
-    pc.printf("\r\nIP Address is: %s\r\n", (ip) ? ip : "No IP");
-    pc.printf("MAC Address is: %s\r\n", (mac) ? mac : "No MAC");    
+    DEBUGP(("\r\nIP Address is: %s\r\n", (ip) ? ip : "No IP"));
+    DEBUGP(("MAC Address is: %s\r\n", (mac) ? mac : "No MAC"));    
     
-    pc.printf("\r\nconnecting to http://%s:%d/\r\n", host_ip, host_port);
+    DEBUGP(("\r\nconnecting to http://%s:%d/\r\n", host_ip, host_port));
     
     err = socket -> connect(host_ip, host_port);
 
@@ -102,7 +104,7 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
  * @param socket TCPSocket instance
  */
 int send_string(char * str, size_t size, TCPSocket * socket){
-    pc.printf("Send: %s\r\n", str); 
+    DEBUGP(("Send: %s\r\n", str)); 
 
     // strcpy(buf, str);
     int num = socket -> send(str, size);
@@ -121,20 +123,22 @@ void parse_RMC( const char * msg, struct minmea_sentence_rmc frame )
 {
     //struct minmea_sentence_rmc frame;
     if (minmea_parse_rmc(&frame, msg)) {
-        if(DEBUG){
-            pc.printf("$RMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\r\n",
-                    frame.latitude.value, frame.latitude.scale,
-                    frame.longitude.value, frame.longitude.scale,
-                    frame.speed.value, frame.speed.scale);
-            pc.printf("$RMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\r\n",
-                    minmea_rescale(&frame.latitude, 1000),
-                    minmea_rescale(&frame.longitude, 1000),
-                    minmea_rescale(&frame.speed, 1000));
-            pc.printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\r\n",
-                    minmea_tocoord(&frame.latitude),
-                    minmea_tocoord(&frame.longitude),
-                    minmea_tofloat(&frame.speed));
-        }
+#if DEBUG
+   pc.printf("$RMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\r\n",
+           frame.latitude.value, frame.latitude.scale,
+           frame.longitude.value, frame.longitude.scale,
+           frame.speed.value, frame.speed.scale);
+   pc.printf("$RMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\r\n",
+           minmea_rescale(&frame.latitude, 1000),
+           minmea_rescale(&frame.longitude, 1000),
+           minmea_rescale(&frame.speed, 1000));
+   pc.printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\r\n",
+           minmea_tocoord(&frame.latitude),
+           minmea_tocoord(&frame.longitude),
+           minmea_tofloat(&frame.speed));
+#else
+   ;
+#endif
     }
 }
 
@@ -225,7 +229,7 @@ int main() {
     TCPSocket socket(&spwf);
 
     if(!WIFION){
-        pc.printf("WiFi is disabled\r\n"); 
+        DEBUGP(("WiFi is disabled\r\n"));
     }
 
     // pc.printf("Start GSM setup\r\n"); 
@@ -244,23 +248,23 @@ int main() {
     
     if(err != 0) 
     {
-        pc.printf("Could not connect to Socket, err = %d!!\r\n", err); 
+        DEBUGP(("Could not connect to Socket, err = %d!!\r\n", err));
         return -1;
     } else {
         if(WIFION){
-            pc.printf("Connected to host server\r\n"); 
+            DEBUGP(("Connected to host server\r\n"));
         }
 
         // Initialize GPS module
         if(sim808v2_setup(&at) != 1){
-            pc.printf("Failed to initialize SIM808 module\r\n"); 
+            DEBUGP(("Failed to initialize SIM808 module\r\n")); 
             return -1;
         }
 
         // Start session
         if(WIFION){
             num = send_string("@42;I;Ver:1a#", 13, &socket);
-            DEBUG(("Sent %d bytes. \r\n", num));
+            DEBUGP(("Sent %d bytes. \r\n", num));
         }
 
         while(1) { 
@@ -286,7 +290,7 @@ int main() {
                             ch = at.getc();
                         }
                         // Print original msg obtained from SIM808
-                        pc.printf("%s\r\n", rmc);
+                        pc.printf("Receved from SIM808: %s\r\n", rmc);
                         // Just print some parsed data
                         // This function fill up frame struct with data
                         parse_RMC(rmc, frame);
@@ -305,19 +309,19 @@ int main() {
                 strcat(msg, "#");
                 num = send_string(msg, 67, &socket);*/
             }
-            // DEBUG(("Sent %d bytes. \r\n", num));
+            // DEBUGP(("Sent %d bytes. \r\n", num));
             // wait(0.1);
         }
     }
     
     // For now unreachable
     if(WIFION){
-        pc.printf("Closing Socket\r\n");
+        DEBUGP(("Closing Socket\r\n"));
         socket.close();
-        pc.printf("Unsecure Socket Test complete.\r\n");
-        printf ("Socket closed\n\r");
+        DEBUGP(("Unsecure Socket Test complete.\r\n"));
+        DEBUGP(("Socket closed\n\r"));
         spwf.disconnect();
-        printf ("WIFI disconnected, exiting ...\n\r");
+        DEBUGP(("WIFI disconnected, exiting ...\n\r"));
     }
 
 }
