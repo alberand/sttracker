@@ -17,6 +17,7 @@
  */
 
 #define WIFION 0
+#define GPSREPORTING 0
 // To compile with DEBUG mode on add `-c -DDEBUG=0` to compiler
 #define DEBUG 1
 
@@ -198,10 +199,12 @@ int sim808v2_setup(ATParser * at)
     // sim808_buffer.clear();
 
     // Turn on reporting
-    status = at -> send("AT+CGNSTST=1") && at -> recv("OK");
-    // sim808v2_send_cmd("AT+CGNSTST=0", &module);
-    // status = sim808v2_cmd_pass();
-    // sim808_buffer.clear();
+    if(GPSREPORTING == 1){
+        status = at -> send("AT+CGNSTST=1") && at -> recv("OK");
+        // sim808v2_send_cmd("AT+CGNSTST=0", &module);
+        // status = sim808v2_cmd_pass();
+        // sim808_buffer.clear();
+    }
 
     return status;
 }
