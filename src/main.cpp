@@ -328,16 +328,29 @@ int main() {
     char format[7] = "GPRMC\0";
     char nmeamsg[BUFFER_SIZE] = { '\0' };
 
+    // Set up Serial link with PC
+    pc.baud(115200);
+
+    DEBUGP(("==========================================================\r\n"));
+    DEBUGP(("Module start working.\r\n"));
+    DEBUGP(("==========================================================\r\n"));
+
 
     ATParser at = ATParser(module, "\r\n");
 
-    // Set up Serial link with PC
-    pc.baud(115200);
     // Create TCP socket to connect to the server
     TCPSocket socket(&spwf);
 
     if(!WIFION){
         DEBUGP(("WiFi is disabled\r\n"));
+    } else {
+        DEBUGP(("WiFi is enabled\r\n"));
+    }
+
+    if(sim808_is_active(&at) == 1){
+        DEBUGP(("SIM808 is active\r\n"));
+    } else {
+        DEBUGP(("SIM808 is not active\r\n"));
     }
 
     // pc.printf("Start GSM setup\r\n"); 
@@ -365,7 +378,7 @@ int main() {
 
         // Initialize GPS module
         if(sim808v2_setup(&at) != 1){
-            DEBUGP(("Failed to initialize SIM808 module\r\n")); 
+            DEBUGP(("Failed to initialize GPS module of the SIM808 \r\n")); 
             return -1;
         }
 
