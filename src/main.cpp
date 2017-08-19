@@ -283,6 +283,38 @@ void wait_for_sample(ATParser * at, char * nmeamsg, char * format,
 
 
 }
+
+/* @brief Send SIM808 module AT command and wait for OK. If OK received returns
+ * 1, 0 otherwise.
+ *
+ * @param ATParser attached to the SIM808 module
+ */
+bool sim808_is_active(ATParser * at){
+    int status = 0;
+    status = at -> send("AT") && at -> recv("OK");
+    if(status != 0){
+        // DEBUGP(("AT is OK\r\n"));
+        return 1;
+    }
+
+    return 0;
+}
+
+int GSM_rssi(ATParser * at){
+    int rssi, ber, status = 0;
+    status = at -> send("AT+CSQ") && at -> recv("+CSQ: %d,", &rssi, &ber);
+    if(status != 0){
+        return rssi;
+    }
+}
+
+int GSM_ber(ATParser * at){
+    int rssi, ber, status = 0;
+    status = at -> send("AT+CSQ") && at -> recv("+CSQ: %d, %d", &rssi, &ber);
+    if(status != 0){
+        return ber;
+    }
+}
 int main() {
     int err, num;    
     green = 0;
