@@ -251,7 +251,14 @@ bool read_msg_header(ATParser * at, char * nmeamsg, char * format){
     }
 }
 
-/* @brief
+/* @brief Wait for data from SIM808. When occured message with `format` cut it
+ * off and put into nmeamsg. TODO: For know it works only for RMC (due to
+ * structure in the paramters).
+ *
+ * @param at ATParser attached to SIM808 module
+ * @param nmeamsg Buffer where NMEA message will be put
+ * @param format Format of the message which is requred. For exmaple: GPRMC
+ * @param frame minmea_sentence_rmc sturcutre which will be filled with data
  *
  */
 void wait_for_sample(ATParser * at, char * nmeamsg, char * format, 
