@@ -323,6 +323,20 @@ int GSM_ber(ATParser * at){
     }
 }
 int main() {
+void echo_mode(ATParser * at, Serial * pc){
+    int8_t buffer = 0;
+    at -> setTimeout(1);
+    while(1){
+        if(pc -> readable()){
+            buffer = pc -> getc();
+            at -> putc(buffer);
+        }
+
+        if((buffer = at -> getc()) != -1){
+            pc -> putc(buffer);
+        }
+    }
+}
     int err, num;    
     green = 0;
     // AP credential
@@ -406,7 +420,9 @@ int main() {
             }
             else{
                 // Wait for data occure in the buffer and read them
-                wait_for_sample(&at, nmeamsg, format, &frame);
+                // wait_for_sample(&at, nmeamsg, format, &frame);
+                // makeCall(&at);
+                echo_mode(&at, &pc);
 
                 /* strcpy(msg, "@42;T;");
                 token = strtok(buffer, "\n");
