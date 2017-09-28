@@ -91,7 +91,7 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
     DEBUGP(("\r\nIP Address is: %s\r\n", (ip) ? ip : "No IP"));
     DEBUGP(("MAC Address is: %s\r\n", (mac) ? mac : "No MAC"));    
     
-    DEBUGP(("\r\nconnecting to http://%s:%d/\r\n", host_ip, host_port));
+    DEBUGP(("\r\nConnecting to http://%s:%d/\r\n", host_ip, host_port));
     
     err = socket -> connect(host_ip, host_port);
 
@@ -105,10 +105,12 @@ int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
  * @param socket TCPSocket instance
  */
 int send_string(char * str, size_t size, TCPSocket * socket){
-    DEBUGP(("Send: %s\r\n", str)); 
+    DEBUGP(("Sending: %s; ", str)); 
 
     // strcpy(buf, str);
     int num = socket -> send(str, size);
+
+    DEBUGP(("[Sent: %d]\r\n", num)); 
 
     return num;
 }
@@ -182,28 +184,16 @@ int sim808v2_setup(ATParser * at)
 
     // Check status
     status = at -> send("AT") && at -> recv("OK");
-    // sim808v2_send_cmd("AT", &module);
-    // status = sim808v2_cmd_pass();
-    // sim808_buffer.clear();
 
     // Power on GPS module
     status = at -> send("AT+CGNSPWR=1") && at -> recv("OK");
-    // sim808v2_send_cmd("AT+CGNSPWR=1", &module);
-    // status = sim808v2_cmd_pass();
-    // sim808_buffer.clear();
 
     // Set NMEA format
     status = at -> send("AT+CGNSSEQ=RMC") && at -> recv("OK");
-    // sim808v2_send_cmd("AT+CGNSSEQ=RMC", &module);
-    // status = sim808v2_cmd_pass();
-    // sim808_buffer.clear();
 
     // Turn on reporting
     if(GPSREPORTING == 1){
         status = at -> send("AT+CGNSTST=1") && at -> recv("OK");
-        // sim808v2_send_cmd("AT+CGNSTST=0", &module);
-        // status = sim808v2_cmd_pass();
-        // sim808_buffer.clear();
     }
 
     return status;
@@ -307,7 +297,7 @@ bool sim808_is_active(ATParser * at){
     return 0;
 }
 
-int GSM_rssi(ATParser * at){
+int sim808_GSM_rssi(ATParser * at){
     int rssi, ber, status = 0;
     status = at -> send("AT+CSQ") && at -> recv("+CSQ: %d,", &rssi, &ber);
     if(status != 0){
@@ -315,7 +305,7 @@ int GSM_rssi(ATParser * at){
     }
 }
 
-int GSM_ber(ATParser * at){
+int sim808_GSM_ber(ATParser * at){
     int rssi, ber, status = 0;
     status = at -> send("AT+CSQ") && at -> recv("+CSQ: %d, %d", &rssi, &ber);
     if(status != 0){
@@ -338,6 +328,7 @@ void echo_mode(ATParser * at, Serial * pc){
     }
 }
     int err, num;    
+    int err;    
     green = 0;
     // AP credential
     char ssid[] = "Install Windows 10";
@@ -356,7 +347,7 @@ void echo_mode(ATParser * at, Serial * pc){
     DEBUGP(("Module start working.\r\n"));
     DEBUGP(("==========================================================\r\n"));
 
-
+    // Parser for SIM808 messages
     ATParser at = ATParser(module, "\r\n");
 
     // Create TCP socket to connect to the server
@@ -405,8 +396,7 @@ void echo_mode(ATParser * at, Serial * pc){
 
         // Start session
         if(WIFION){
-            num = send_string("@42;I;Ver:1a#", 13, &socket);
-            DEBUGP(("Sent %d bytes. \r\n", num));
+            send_string("@42;I;Ver:1a#", 13, &socket);
         }
 
         while(1) { 
@@ -415,7 +405,7 @@ void echo_mode(ATParser * at, Serial * pc){
                 wait(0.1);
                 n_blinks(2, &green);
                 if(WIFION){
-                    num = send_string("@42;T;Button is pressed#", 24, &socket);
+                    send_string("@42;T;Button is pressed#", 24, &socket);
                 }
             }
             else{
@@ -429,9 +419,8 @@ void echo_mode(ATParser * at, Serial * pc){
                 token = strtok(NULL, "\n");
                 strncat(msg, token, 255);
                 strcat(msg, "#");
-                num = send_string(msg, 67, &socket);*/
+                send_string(msg, 67, &socket);*/
             }
-            // DEBUGP(("Sent %d bytes. \r\n", num));
             // wait(0.1);
         }
     }
