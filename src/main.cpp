@@ -9,7 +9,6 @@
 // Custom libs
 #include "utils.h"
 #include "minmea.h"
-#include "DFRobot_sim808.h"
 
 /* TODO:
  * setup_connection - need to throuw host and port as arguments
@@ -18,7 +17,7 @@
 
 #define WIFION 0
 #define GPSREPORTING 0
-// To compile with DEBUG mode on add `-c -DDEBUG=0` to compiler
+// To compile without DEBUG mode add `-c -DDEBUG=0` to compiler
 #define DEBUG 1
 
 #if DEBUG
@@ -31,6 +30,8 @@
  * commands.
  */
 #define BUFFER_SIZE 255
+
+#define HTTP_SERVER_PORT "80"
 
 // Init serial with PC
 Serial pc(USBTX, USBRX);
@@ -70,11 +71,10 @@ void sim808v2_send_cmd(const char * cmd, BufferedSerial * sr)
     sr -> puts("\n");
 }
 
-int setup_connection(TCPSocket * socket, char * ssid, char * seckey){
+int setup_connection(TCPSocket * socket, char * ssid, char * seckey, 
+        char * host_ip, uint16_t host_port)
+{
     int err;
-    // char host_ip[] = "192.168.12.1";
-    char host_ip[] = "147.32.196.177";
-    int host_port = 5000;
 
     DEBUGP(("Connecting to AP\r\n"));
             
@@ -145,45 +145,14 @@ void parse_RMC( const char * msg, struct minmea_sentence_rmc * frame )
     }
 }
 
-/* @brief Check if command passed and returned "OK". Firstly, wait for 1 second
- * and then look for OK in the response buffer. Also, clears buffer.
- *
- * @return Boolean, True if identical.
- */
-int sim808v2_cmd_pass(void)
-{
-    int status = 1;
-    char response[2];
-
-    // Wait 
-    wait(1);
-
-    while(sim808_buffer.available())
-    {
-        response[0] = sim808_buffer.get();
-        response[1] = sim808_buffer.get();
-        if(!(status = strncmp(response, "OK", 2))){
-            break;
-        }
-    }
-
-    return status == 0;
-}
-
 /* @brief Prepare serial link and SIM808 V2 module for work (mainly for GPS
  * data).
  *
  * @return Boolean in case of succesful intialization.
  */
-int sim808v2_setup(ATParser * at)
+int sim808v2_GPS_setup(ATParser * at)
 {
     int status = 1;
-    // Configure connection to the SIM808 module
-    // module.baud(9600);
-    // module.attach(&SIM808_V2_IRQHandler, SerialBase::RxIrq);
-
-    // Check status
-    status = at -> send("AT") && at -> recv("OK");
 
     // Power on GPS module
     status = at -> send("AT+CGNSPWR=1") && at -> recv("OK");
@@ -242,7 +211,7 @@ bool read_msg_header(ATParser * at, char * nmeamsg, char * format){
 }
 
 /* @brief Wait for data from SIM808. When occured message with `format` cut it
- * off and put into nmeamsg. TODO: For know it works only for RMC (due to
+ * off and put into nmeamsg. TODO: For now it works only for RMC (due to
  * structure in the paramters).
  *
  * @param at ATParser attached to SIM808 module
@@ -300,9 +269,8 @@ bool sim808_is_active(ATParser * at){
 int sim808_GSM_rssi(ATParser * at){
     int rssi, ber, status = 0;
     status = at -> send("AT+CSQ") && at -> recv("+CSQ: %d,", &rssi, &ber);
-    if(status != 0){
-        return rssi;
-    }
+
+    return rssi;
 }
 
 int sim808_GSM_ber(ATParser * at){
@@ -333,6 +301,10 @@ void echo_mode(ATParser * at, Serial * pc){
     // AP credential
     char ssid[] = "Install Windows 10";
     char seckey[] = "11235813";  
+    // Server address
+    // char host_ip[] = "192.168.12.1";
+    char host_ip[] = "147.32.196.177";
+    uint16_t host_port = 5000;
     // Structure to fill in with GPS data
     struct minmea_sentence_rmc frame;
     // Buffer for adding protocol structural symbols
@@ -374,7 +346,7 @@ void echo_mode(ATParser * at, Serial * pc){
     // return 0;
 
     if(WIFION){
-        err = setup_connection(&socket, ssid, seckey);
+        err = setup_connection(&socket, ssid, seckey, host_ip, host_port);
     } else{
         err = 0;
     }
@@ -389,7 +361,7 @@ void echo_mode(ATParser * at, Serial * pc){
         }
 
         // Initialize GPS module
-        if(sim808v2_setup(&at) != 1){
+        if(sim808v2_GPS_setup(&at) != 1){
             DEBUGP(("Failed to initialize GPS module of the SIM808 \r\n")); 
             return -1;
         }
