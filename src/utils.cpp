@@ -27,3 +27,14 @@ void append(char* s, char c)
         s[len] = c;
         s[len+1] = '\0';
 }
+
+int len(char *s)
+{
+    int len = 0;
+    
+    while(s[len] != '\0'){
+        len++;
+    }
+    
+    return len;
+}

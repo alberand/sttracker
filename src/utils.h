@@ -27,4 +27,10 @@ void print_buffer(MyBuffer <char> * buffer, Serial * pc);
  */
 void append(char* s, char c);
 
+/* @brief Counts number of non-empty char in string. Stops on the first '\0'
+ *
+ * @param s character array
+ */
+int len(char *s);
+
 #endif // __UTILS_H__
