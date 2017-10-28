@@ -1,0 +1,3 @@
+[submodule "lib/ATParser"]
+	path = lib/ATParser
+	url = https://github.com/ARMmbed/ATParser
