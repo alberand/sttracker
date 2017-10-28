@@ -1,3 +1,6 @@
 [submodule "lib/ATParser"]
 	path = lib/ATParser
 	url = https://github.com/ARMmbed/ATParser
+[submodule "lib/minmea"]
+	path = lib/minmea
+	url = https://github.com/kosma/minmea
