@@ -10,28 +10,19 @@
 #include "utils.h"
 #include "minmea.h"
 
+#include "config.h"
+#include "networking.h"
+#include "sim808.h"
 /* TODO:
  * setup_connection - need to throuw host and port as arguments
  *
  */
-
-#define WIFION 0
-#define GPSREPORTING 0
-// To compile without DEBUG mode add `-c -DDEBUG=0` to compiler
-#define DEBUG 1
-
-#if DEBUG
-    #define DEBUGP(x) pc.printf x
-#else
-    #define DEBUGP(x) do {} while (0)
-#endif
 
 /* @brief Maximum size of the buffer used for obtaining SIM808 response to the
  * commands.
  */
 #define BUFFER_SIZE 255
 
-#define HTTP_SERVER_PORT "80"
 
 // Init serial with PC
 Serial pc(USBTX, USBRX);
@@ -58,133 +49,6 @@ void SIM808_V2_IRQHandler(void)
     char ch = module.getc();
 
     sim808_buffer.put(ch);
-}
-
-/* @brief Write command `cmd` to the serial port `sr` and add newline '\n'.
- *
- * @param cmd Command to send.
- * @param sr mbed Serial object connected to SIM808_V2 module.
- */
-void sim808v2_send_cmd(const char * cmd, BufferedSerial * sr)
-{
-    sr -> puts(cmd);
-    sr -> puts("\n");
-}
-
-int setup_connection(TCPSocket * socket, char * ssid, char * seckey, 
-        char * host_ip, uint16_t host_port)
-{
-    int err;
-
-    DEBUGP(("Connecting to AP\r\n"));
-            
-    if(spwf.connect(ssid, seckey, NSAPI_SECURITY_WPA2)) {      
-        DEBUGP(("Connected.\r\n"));
-    } else {
-        DEBUGP(("Error connecting to AP.\r\n"));
-        return -1;
-    }   
-
-    const char *ip = spwf.get_ip_address();
-    const char *mac = spwf.get_mac_address();
-    
-    DEBUGP(("\r\nIP Address is: %s\r\n", (ip) ? ip : "No IP"));
-    DEBUGP(("MAC Address is: %s\r\n", (mac) ? mac : "No MAC"));    
-    
-    DEBUGP(("\r\nConnecting to http://%s:%d/\r\n", host_ip, host_port));
-    
-    err = socket -> connect(host_ip, host_port);
-
-    return err;
-}
-
-/* @brief Send string to the TCP socket
- *
- * @param str string to send
- * @param size size of the string
- * @param socket TCPSocket instance
- */
-int send_string(char * str, size_t size, TCPSocket * socket){
-    DEBUGP(("Sending: %s; ", str)); 
-
-    // strcpy(buf, str);
-    int num = socket -> send(str, size);
-
-    DEBUGP(("[Sent: %d]\r\n", num)); 
-
-    return num;
-}
-
-/* @brief Take a string and parse it into struct 
- *
- * Take string in GPS fromat RMC and parse it into struct using Minmea library.
- *
- * @param string to parse
- * @param struct to fill in
- */
-void parse_RMC( const char * msg, struct minmea_sentence_rmc * frame )
-{
-    //struct minmea_sentence_rmc frame;
-    if (minmea_parse_rmc(frame, msg)) {
-#if DEBUG
-   pc.printf("$RMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\r\n",
-           frame -> latitude.value, frame -> latitude.scale,
-           frame -> longitude.value, frame -> longitude.scale,
-           frame -> speed.value, frame -> speed.scale);
-   pc.printf("$RMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\r\n",
-           minmea_rescale(&frame -> latitude, 1000),
-           minmea_rescale(&frame -> longitude, 1000),
-           minmea_rescale(&frame -> speed, 1000));
-   pc.printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\r\n",
-           minmea_tocoord(&frame -> latitude),
-           minmea_tocoord(&frame -> longitude),
-           minmea_tofloat(&frame -> speed));
-#else
-   ;
-#endif
-    }
-}
-
-/* @brief Prepare serial link and SIM808 V2 module for work (mainly for GPS
- * data).
- *
- * @return Boolean in case of succesful intialization.
- */
-int sim808v2_GPS_setup(ATParser * at)
-{
-    int status = 1;
-
-    // Power on GPS module
-    status = at -> send("AT+CGNSPWR=1") && at -> recv("OK");
-
-    // Set NMEA format
-    status = at -> send("AT+CGNSSEQ=RMC") && at -> recv("OK");
-
-    // Turn on reporting
-    if(GPSREPORTING == 1){
-        status = at -> send("AT+CGNSTST=1") && at -> recv("OK");
-    }
-
-    return status;
-}
-
-/* @brief Wait for the NMEA messages starting character. In other words for `$`
- * sign.
- *
- * @param at ATParser instance associated with SIM808
- * @return Received character
- */
-char wait_for_msg_start(ATParser * at){
-    char ch;
-
-    while((ch = at -> getc())){
-        if(ch == '$'){
-            return ch;
-        }
-        // DEBUGP(("Char from SIM808: %c\r\n", ch));
-    }
-
-    return '\0';
 }
 
 /* @brief This function should be called after `wait_for_msg_start`. Read next 5
