@@ -4,3 +4,6 @@
 [submodule "lib/minmea"]
 	path = lib/minmea
 	url = https://github.com/kosma/minmea
+[submodule "lib/attentive"]
+	path = lib/attentive
+	url = https://github.com/cloudyourcar/attentive
