@@ -6,6 +6,8 @@
 #define WIFION 0
 #define GPSREPORTING 1
 
+#define SERVER_PORT 80
+
 // To compile without DEBUG mode add `-c -DDEBUG=0` to compiler
 #define DEBUG 1
 
